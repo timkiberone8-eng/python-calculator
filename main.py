@@ -1,21 +1,30 @@
-# Урок 3, шаг 2. Добавили else и finally.
+# Урок 3, шаг 3 и задача 2. Своё собственное исключение.
 #
-# Полная конструкция читается так:
-#   try     — пробуем
-#   except  — если сломалось вот так, делаем вот это
-#   else    — если НЕ сломалось вообще
-#   finally — выполняется всегда, сломалось или нет
+# Встроенных ошибок Python много, но они про язык: не число, деление на ноль,
+# нет файла. Про НАШУ задачу язык ничего не знает. "Корень из отрицательного
+# числа" — это правило нашей программы, и объявить его должны мы сами.
 #
-# Зачем else, если можно дописать в конец try? Затем, что в try должно
-# лежать только то, что может сломаться. Чем короче try, тем точнее
-# понятно, откуда прилетела ошибка.
-#
-# finally обычно закрывает то, что было открыто: файл, соединение с базой.
-# Закроется даже если программа упала.
+# Своё исключение — это класс, унаследованный от Exception. Всё, больше
+# ничего не нужно: тело можно оставить пустым словом pass.
 
 from calculator_modules.operations.basic import add, subtract, multiply, divide
-from calculator_modules.operations.advanced import power, square_root
+from calculator_modules.operations.advanced import power
 from calculator_modules.operations.trigonometry import sin, cos, tan
+
+
+class NegativeNumberError(Exception):
+    """Исключение вызывается, если число отрицательное"""
+    pass
+
+
+def sqrt_with_check(x):
+    """Корень с проверкой. Для отрицательного числа выбрасывает своё исключение."""
+    if x < 0:
+        # raise = выбросить ошибку. Дальше эта строка не выполнится,
+        # управление сразу уйдёт в ближайший подходящий except.
+        raise NegativeNumberError("Ошибка: корень из отрицательного числа не определён")
+    # ** 0.5 это то же самое, что квадратный корень
+    return x ** 0.5
 
 
 def main():
@@ -40,7 +49,7 @@ def main():
         elif operation == "степень":
             result = power(a, b)
         elif operation == "квадратный корень":
-            result = square_root(a)
+            result = sqrt_with_check(a)
         elif operation == "синус":
             result = sin(a)
         elif operation == "косинус":
@@ -50,15 +59,17 @@ def main():
         else:
             result = "Неизвестная операция"
 
+    except NegativeNumberError as e:
+        # "as e" кладёт саму ошибку в переменную e.
+        # print(e) печатает тот текст, который мы передали в raise.
+        print(e)
     except ZeroDivisionError:
         print("Ошибка: деление на ноль невозможно!")
     except ValueError:
         print("Ошибка: введено не число!")
     else:
-        # Сюда попадаем, только если в try ничего не сломалось
         print(f"Результат: {result}")
     finally:
-        # А сюда — всегда
         print("Операция завершена.")
 
 

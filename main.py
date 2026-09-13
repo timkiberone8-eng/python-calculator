@@ -1,19 +1,16 @@
-# Урок 2, шаг 2. Тот же main.py, но берёт функции уже из ПАКЕТА.
-#
-# Изменилась ровно одна строка — путь импорта. Всё остальное то же.
-# Это полезно показать через git diff: видно, что структура проекта
-# поменялась, а логика нет.
-#
-# Путь читается слева направо как папки:
-# calculator_modules (папка) -> operations (пакет) -> basic (файл basic.py)
+# Урок 2, шаг 3. Подключаем второй модуль пакета — степень и корень.
+
 from calculator_modules.operations.basic import add, subtract, multiply, divide
+from calculator_modules.operations.advanced import power, square_root
 
 
 def main():
     print("Добро пожаловать в калькулятор!")
     a = float(input("Введите первое число: "))
     b = float(input("Введите второе число: "))
-    operation = input("Введите операцию (сложение, вычитание, умножение, деление): ").strip().lower()
+    operation = input(
+        "Введите операцию (сложение, вычитание, умножение, деление, степень, квадратный корень): "
+    ).strip().lower()
 
     if operation == "сложение":
         result = add(a, b)
@@ -23,6 +20,13 @@ def main():
         result = multiply(a, b)
     elif operation == "деление":
         result = divide(a, b)
+    elif operation == "степень":
+        result = power(a, b)
+    elif operation == "квадратный корень":
+        # Корень берётся только от первого числа, второе не используется.
+        # Хороший вопрос группе: как быть, что программа всё равно
+        # спросила второе число, хотя оно не нужно?
+        result = square_root(a)
     else:
         result = "Неизвестная операция"
 

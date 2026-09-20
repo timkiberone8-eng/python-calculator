@@ -1,18 +1,18 @@
-# Урок 3, шаг 1. try / except — программа перестаёт падать.
+# Стартовое состояние для того, кто входит в группу на занятии 3.
 #
-# До этого коммита любая из двух вещей роняла программу:
-#   - ввели "привет" вместо числа  -> ValueError
-#   - поделили на ноль             -> ZeroDivisionError (мы прятали его через if)
+# Это ровно то, с чем группа закончила занятие 2:
+#   - калькулятор разнесён по модулям (calculator_modules/)
+#   - есть try / except, программа не падает от неверного ввода
 #
-# try: здесь код, который МОЖЕТ сломаться.
-# except: что делать, если сломался именно такой ошибкой.
+# И ровно то, чего у группы ещё НЕТ и что делается сегодня вместе:
+#   - файла __init__.py, то есть папка с модулями пока не пакет
+#   - блока else
+#   - своего исключения и его ловли
 #
-# Ловить ошибку по имени важно. Голый "except:" без имени поймает вообще всё,
-# включая твои собственные опечатки, и спрячет их. Так делать не надо.
+# Твоя задача на сегодня та же, что у всех: добавить это сюда своими руками.
 
-from calculator_modules.operations.basic import add, subtract, multiply, divide
-from calculator_modules.operations.advanced import power, square_root
-from calculator_modules.operations.trigonometry import sin, cos, tan
+from calculator_modules.arithmetic import add, subtract, multiply, divide
+from calculator_modules.advanced import power, square_root
 
 
 def main():
@@ -23,7 +23,7 @@ def main():
         b = float(input("Введите второе число: "))
         operation = input(
             "Введите операцию (сложение, вычитание, умножение, деление, "
-            "степень, квадратный корень, синус, косинус, тангенс): "
+            "степень, квадратный корень): "
         ).strip().lower()
 
         if operation == "сложение":
@@ -33,19 +33,11 @@ def main():
         elif operation == "умножение":
             result = multiply(a, b)
         elif operation == "деление":
-            # Теперь делим честно, без проверки на ноль внутри функции.
-            # Ошибку поймает except ниже.
-            result = a / b
+            result = divide(a, b)
         elif operation == "степень":
             result = power(a, b)
         elif operation == "квадратный корень":
             result = square_root(a)
-        elif operation == "синус":
-            result = sin(a)
-        elif operation == "косинус":
-            result = cos(a)
-        elif operation == "тангенс":
-            result = tan(a)
         else:
             result = "Неизвестная операция"
 

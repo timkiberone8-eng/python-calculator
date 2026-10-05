@@ -17,3 +17,6 @@ urok4/note.txt
 urok4/books.csv
 urok4/my_books.csv
 urok5/tasks.csv
+
+# База, которую planv.py создаёт при каждом запуске. Пересоздаётся сама.
+zanyatie5/kiber.db

@@ -6,7 +6,7 @@
 
 ## 0. Вход
 
-Всё ниже для Windows. Если у тебя дома Mac или Linux, напиши в чат группы, разберёмся.
+Всё ниже для Windows. Если у тебя дома Mac или Linux, сначала открой блок «У меня Mac или Linux» в конце этого раздела.
 
 Открой SQL Shell, нажми Enter четыре раза и введи пароль `postgres` (при вводе его не видно). Потом три команды:
 
@@ -72,6 +72,32 @@ CREATE DATABASE kiber;
 Пароль поставь `postgres`, как в классе. Его спрашивают при каждом входе, а забытый пароль не восстановить: придётся переустанавливать PostgreSQL.
 
 После установки в меню Пуск появится SQL Shell (psql).
+
+</details>
+
+<details markdown="1">
+<summary markdown="span">У меня Mac или Linux</summary>
+
+Команды SQL те же самые. Отличаются установка, запуск psql и клавиши, а `\! chcp 1251` не нужен: русские буквы работают и так.
+
+**Linux (Ubuntu).** В терминале:
+
+```
+sudo apt install postgresql
+sudo -u postgres psql
+```
+
+Первая команда ставит PostgreSQL, вторая открывает psql. Один раз задай пароль, как в классе:
+
+```sql
+ALTER USER postgres PASSWORD 'postgres';
+```
+
+Дальше всё как выше, начиная с `CREATE DATABASE kiber;`. В следующий раз сразу `sudo -u postgres psql`. Ошибки могут быть по-английски, если система на английском.
+
+**Mac.** Скачай установщик: [postgresql.org/download/macosx](https://www.postgresql.org/download/macosx/) → Download the installer → версия 18 для macOS. Экраны те же, что в блоке «Дома нет PostgreSQL», пароль `postgres`. После установки в «Программах», в папке PostgreSQL 18, появится SQL Shell (psql): Enter четыре раза и пароль `postgres`. Шаги для Mac не проверены. Если что-то выглядит иначе, напиши в чат группы.
+
+**Клавиши.** Ctrl+C здесь не закрывает окно, а стирает недописанную команду. Выйти: `\q` или Ctrl+D. Стрелка вверх возвращает команду целиком, даже если она была в несколько строк. F7 нет.
 
 </details>
 

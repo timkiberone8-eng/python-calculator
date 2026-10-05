@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Почему ломаются русские буквы в psql</title>
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --ink: #1d1d1f;
+    --muted: #6b6b70;
+    --line: #e2e0da;
+    --a: #2f6fdb;      /* таблица 866, окно консоли */
+    --a-soft: #e6eefc;
+    --b: #d9822b;      /* таблица 1251, psql */
+    --b-soft: #fbeedd;
+    --ok: #2e8b57;
+    --ok-soft: #e3f3e9;
+    --bad: #c8403a;
+    --bad-soft: #fbe5e3;
+    --mono: Consolas, "Cascadia Mono", "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", system-ui, sans-serif; }
+  body { font-size: clamp(16px, 1.6vw, 30px); overflow: hidden; }
+
+  .slide { position: absolute; inset: 0; padding: 4vh 6vw 10vh; display: none;
+    flex-direction: column; gap: 2.5vh; }
+  .slide.active { display: flex; }
+  h1 { font-size: 2.4em; margin: 0; line-height: 1.1; }
+  h2 { font-size: 1.8em; margin: 0; }
+  p { margin: 0; line-height: 1.4; }
+  .muted { color: var(--muted); }
+  code, .mono { font-family: var(--mono); }
+  .center { margin: auto 0; }
+
+  .console { background: #0c0c0c; color: #cccccc; font-family: var(--mono);
+    padding: 1em 1.2em; border-radius: 10px; font-size: .85em; line-height: 1.45;
+    white-space: pre; overflow: hidden; }
+  .console .warn { color: #f5c542; }
+
+  .a { color: var(--a); } .b { color: var(--b); }
+  .tag { display: inline-block; padding: .1em .5em; border-radius: 6px; font-weight: 600; }
+  .tag.a { background: var(--a-soft); } .tag.b { background: var(--b-soft); }
+
+  /* слайд 2: буква → число */
+  .letter-demo { display: grid; grid-template-columns: auto auto auto; gap: 1.2em 2.5em;
+    align-items: center; justify-content: start; }
+  .big { font-size: 5em; font-weight: 700; line-height: 1; min-width: 1.2em; text-align: center; }
+  .num { font-family: var(--mono); font-size: 2.6em; font-weight: 700; }
+  .keys { display: flex; flex-wrap: wrap; gap: .35em; }
+  .keys button { font: inherit; font-size: 1em; width: 2em; height: 2em; border-radius: 8px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer; }
+  .keys button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  /* слайд 3: шифр */
+  .cipher { display: grid; grid-template-columns: 1fr 1fr; gap: 3vw; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1em 1.3em; }
+  .card h3 { margin: 0 0 .5em; font-size: 1.1em; }
+  .pairs { font-family: var(--mono); font-size: 1.2em; line-height: 1.6; }
+
+  /* слайд 4: симулятор */
+  .controls { display: flex; gap: 1.2em; align-items: center; flex-wrap: wrap; }
+  .controls input { font: inherit; font-size: 1.2em; padding: .25em .5em; width: 8em;
+    border: 2px solid var(--line); border-radius: 8px; }
+  .switch { font: inherit; padding: .35em .9em; border-radius: 999px; border: 2px solid;
+    cursor: pointer; font-weight: 600; }
+  .switch.off { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+  .switch.on  { background: var(--ok-soft);  border-color: var(--ok);  color: var(--ok); }
+
+  .pipe { display: grid; grid-template-columns: 12em 1fr; gap: 1.1vh 1.5em; align-items: center; }
+  .pipe .label { color: var(--muted); font-size: .9em; text-align: right; }
+  .cells { display: flex; gap: .3em; flex-wrap: wrap; }
+  .cell { min-width: 2.2em; padding: .15em .35em; border-radius: 8px; text-align: center;
+    font-size: 1.15em; border: 1px solid var(--line); background: #fff; }
+  .cell small { display: block; font-size: .5em; color: var(--muted); line-height: 1.1; }
+  .cell.byte { font-family: var(--mono); }
+  .cell.byte.a { background: var(--a-soft); border-color: transparent; color: var(--ink); }
+  .cell.byte.b { background: var(--b-soft); border-color: transparent; color: var(--ink); }
+  .cell.weird { background: var(--bad-soft); border-color: var(--bad); }
+  .cell.invisible { color: var(--bad); font-style: italic; }
+  .results { display: grid; grid-template-columns: auto auto 1fr; gap: .5em 1em; align-items: center;
+    font-family: var(--mono); }
+  .verdict { font-family: "Segoe UI", system-ui, sans-serif; font-weight: 600; }
+  .verdict.ok { color: var(--ok); } .verdict.bad { color: var(--bad); }
+
+  /* слайд 5: расшифровка команды */
+  .cmd { display: flex; gap: .6em; font-family: var(--mono); font-size: 3em; font-weight: 700; }
+  .cmd span { padding: .1em .3em; border-radius: 10px; }
+  .explain { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2vw; }
+
+  ul.remember { margin: 0; padding-left: 1.2em; line-height: 1.6; font-size: 1.2em; }
+
+  nav { position: fixed; left: 0; right: 0; bottom: 0; height: 7vh; display: flex;
+    align-items: center; justify-content: center; gap: 1em; color: var(--muted); font-size: .8em; }
+  nav button { font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 8px;
+    padding: .2em .8em; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="slide active">
+  <h1>Почему в psql ломаются русские буквы</h1>
+  <p class="muted">При входе в SQL Shell на Windows появляется вот это:</p>
+  <div class="console">psql (18.6)
+<span class="warn">ПРЕДУПРЕЖДЕНИЕ: Кодовая страница консоли (866) отличается от основной
+                страницы Windows (1251).
+                8-битовые (русские) символы могут отображаться некорректно.</span>
+Введите "help", чтобы получить справку.
+
+postgres=#</div>
+  <p>Что такое «кодовая страница», откуда взялись 866 и 1251 и почему это важно?</p>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <h2>Компьютер не знает букв. Он хранит числа.</h2>
+  <p>Чтобы превратить число в букву, нужна таблица. Она называется <b>кодовая страница</b>.
+     Беда в том, что таблиц для русского языка несколько.</p>
+  <div class="letter-demo center">
+    <div class="big" id="bigLetter">А</div>
+    <div><span class="tag a">таблица 866</span><br><span class="num a" id="n866">128</span></div>
+    <div><span class="tag b">таблица 1251</span><br><span class="num b" id="n1251">192</span></div>
+  </div>
+  <p class="muted">Нажми на букву: одна и та же буква — разные числа.</p>
+  <div class="keys" id="keys"></div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <h2>Два друга с разными шифрами</h2>
+  <p>Окно консоли записывает буквы по <span class="tag a">таблице 866</span>,
+     а psql читает их по <span class="tag b">таблице 1251</span>.</p>
+  <div class="cipher center">
+    <div class="card">
+      <h3 class="a">Окно консоли отправляет</h3>
+      <div class="pairs" id="sendPairs"></div>
+    </div>
+    <div class="card">
+      <h3 class="b">psql получает</h3>
+      <div class="pairs" id="recvPairs"></div>
+    </div>
+  </div>
+  <p>Никто не ошибся: каждый честно пользуется своей таблицей. Просто таблицы разные.</p>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <h2>Проверим, что попадёт в базу</h2>
+  <div class="controls">
+    <label>Слово: <input id="word" value="аня" autocomplete="off"></label>
+    <button class="switch off" id="chcp">chcp 1251 не введён</button>
+  </div>
+  <div class="pipe">
+    <div class="label">набираешь</div>        <div class="cells" id="rowTyped"></div>
+    <div class="label">окно отправляет</div>  <div class="cells" id="rowBytes"></div>
+    <div class="label">psql читает как</div>  <div class="cells" id="rowStored"></div>
+  </div>
+  <div class="results">
+    <span>postgres=# SELECT '<span class="w"></span>';</span>
+    <span>→ <b id="outPlain"></b></span>
+    <span class="verdict" id="vPlain"></span>
+    <span>postgres=# SELECT upper('<span class="w"></span>');</span>
+    <span>→ <b id="outUpper"></b></span>
+    <span class="verdict" id="vUpper"></span>
+  </div>
+  <p class="muted" style="font-size:.8em">Результаты для «аня» проверены на настоящем PostgreSQL 18.</p>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <h2>Лечение: одна команда</h2>
+  <div class="cmd center">
+    <span style="background:#eee">\!</span>
+    <span style="background:var(--a-soft)">chcp</span>
+    <span style="background:var(--b-soft)">1251</span>
+  </div>
+  <div class="explain">
+    <div class="card"><h3>\!</h3><p>«psql, передай эту команду Windows»</p></div>
+    <div class="card"><h3 class="a">chcp</h3><p><b>CH</b>ange <b>C</b>ode <b>P</b>age — «сменить кодовую страницу». Команда Windows со времён DOS.</p></div>
+    <div class="card"><h3 class="b">1251</h3><p>Какую таблицу взять. Ту же, что у psql. Теперь шифр общий.</p></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <h2>Запомни</h2>
+  <ul class="remember center">
+    <li>Видишь предупреждение про кодовую страницу → первой командой <code>\! chcp 1251</code></li>
+    <li>Команда действует, пока окно открыто. Закрыл окно — при следующем запуске вводишь снова.</li>
+    <li>Проверка: <code>SELECT upper('аня');</code> должно дать <code>АНЯ</code>, а не <code>ан╧</code></li>
+    <li>Опасно то, что без <code>chcp</code> на экране всё выглядит нормально. Ломается то, что лежит в базе.</li>
+  </ul>
+  <p class="muted">Почему так вышло: в 80-х каждая страна придумывала свою таблицу. Сейчас есть одна на все языки —
+     <b>UTF-8</b>. В ней работают телефоны, браузеры и Linux, поэтому там такой проблемы нет.</p>
+</section>
+
+<nav>
+  <button id="prev">←</button>
+  <span id="pageNo"></span>
+  <button id="next">→</button>
+</nav>
+
+<script>
+  // Таблицы берём у самого браузера: он умеет обе кодировки.
+  function makeTable(name) {
+    const all = new Uint8Array(256).map((_, i) => i);
+    const chars = Array.from(new TextDecoder(name).decode(all));
+    const back = new Map(chars.map((ch, i) => [ch, i]));
+    return { name, chars, back };
+  }
+  const T866 = makeTable("ibm866");
+  const T1251 = makeTable("windows-1251");
+
+  const encode = (text, t) => Array.from(text).map(ch => t.back.has(ch) ? t.back.get(ch) : 63); // 63 = "?"
+  const decode = (bytes, t) => bytes.map(b => t.chars[b]).join("");
+
+  // Невидимые символы, в которые превращаются некоторые буквы
+  const INVISIBLE = { " ": "неразр. пробел", "­": "мягкий перенос" };
+
+  // ---------- слайд 2 ----------
+  const keys = document.getElementById("keys");
+  "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя".split("").forEach(ch => {
+    const b = document.createElement("button");
+    b.textContent = ch;
+    b.onclick = () => {
+      keys.querySelectorAll("button").forEach(x => x.classList.remove("on"));
+      b.classList.add("on");
+      document.getElementById("bigLetter").textContent = ch;
+      document.getElementById("n866").textContent = T866.back.get(ch);
+      document.getElementById("n1251").textContent = T1251.back.get(ch);
+    };
+    keys.appendChild(b);
+  });
+  keys.firstChild.classList.add("on");
+
+  // ---------- слайд 3 ----------
+  function show(ch) {
+    if (INVISIBLE[ch]) return `<i style="color:var(--bad)">(${INVISIBLE[ch]})</i>`;
+    return ch;
+  }
+  const sample = "ПРИВЕТ";
+  document.getElementById("sendPairs").innerHTML =
+    Array.from(sample).map(ch => `${ch} → <span class="a">${T866.back.get(ch)}</span>`).join("<br>");
+  document.getElementById("recvPairs").innerHTML =
+    Array.from(sample).map(ch => {
+      const n = T866.back.get(ch);
+      return `<span class="b">${n}</span> → ${show(T1251.chars[n])}`;
+    }).join("<br>");
+
+  // ---------- слайд 4 ----------
+  let fixed = false;
+  const wordInput = document.getElementById("word");
+  const chcpBtn = document.getElementById("chcp");
+
+  function cell(content, cls = "", sub = "") {
+    return `<span class="cell ${cls}">${content}${sub ? `<small>${sub}</small>` : ""}</span>`;
+  }
+
+  function simulate() {
+    const word = wordInput.value || " ";
+    const consoleTable = fixed ? T1251 : T866;   // как окно превращает буквы в числа
+    const bytes = encode(word, consoleTable);
+    const stored = decode(bytes, T1251);           // psql всегда читает по 1251
+    // Обратно на экран: psql отдаёт числа по 1251, окно рисует по своей таблице
+    const toScreen = s => decode(encode(s, T1251), consoleTable);
+
+    document.querySelectorAll(".w").forEach(el => el.textContent = word);
+    document.getElementById("rowTyped").innerHTML = Array.from(word).map(ch => cell(ch)).join("");
+    document.getElementById("rowBytes").innerHTML =
+      bytes.map(b => cell(b, "byte " + (fixed ? "b" : "a"))).join("");
+    document.getElementById("rowStored").innerHTML = Array.from(stored).map((ch, i) => {
+      const same = ch === Array.from(word)[i];
+      if (INVISIBLE[ch]) return cell("?", "weird invisible", INVISIBLE[ch]);
+      return cell(ch, same ? "" : "weird");
+    }).join("");
+
+    const plain = toScreen(stored);
+    const upper = toScreen(stored.toUpperCase());
+    const expected = word.toUpperCase();
+    document.getElementById("outPlain").textContent = plain;
+    document.getElementById("outUpper").textContent = upper;
+
+    const vPlain = document.getElementById("vPlain");
+    const vUpper = document.getElementById("vUpper");
+    if (stored === word) {
+      vPlain.textContent = "✔ в базе правильные буквы"; vPlain.className = "verdict ok";
+    } else {
+      vPlain.textContent = "выглядит нормально… но в базе каша!"; vPlain.className = "verdict bad";
+    }
+    if (upper === expected) {
+      vUpper.textContent = "✔ " + expected; vUpper.className = "verdict ok";
+    } else {
+      vUpper.textContent = "✘ ждали " + expected; vUpper.className = "verdict bad";
+    }
+
+    chcpBtn.textContent = fixed ? "✔ chcp 1251 введён" : "chcp 1251 не введён";
+    chcpBtn.className = "switch " + (fixed ? "on" : "off");
+  }
+  wordInput.addEventListener("input", simulate);
+  chcpBtn.addEventListener("click", () => { fixed = !fixed; simulate(); });
+  simulate();
+
+  // ---------- листание ----------
+  const slides = Array.from(document.querySelectorAll(".slide"));
+  let current = 0;
+  function go(i) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, k) => s.classList.toggle("active", k === current));
+    document.getElementById("pageNo").textContent = `${current + 1} / ${slides.length}`;
+  }
+  document.getElementById("prev").onclick = () => go(current - 1);
+  document.getElementById("next").onclick = () => go(current + 1);
+  document.addEventListener("keydown", e => {
+    if (e.target === wordInput) return;   // стрелки в поле ввода двигают курсор, а не слайды
+    if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") go(current + 1);
+    if (e.key === "ArrowLeft" || e.key === "PageUp") go(current - 1);
+  });
+  go(0);
+</script>
+</body>
+</html>

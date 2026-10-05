@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{{ page.title }}</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #1f2328;
+    --muted: #59636e;
+    --line: #d1d9e0;
+    --soft: #f6f8fa;
+    --link: #0969da;
+    --hl-keyword: #cf222e;
+    --hl-string: #0a3069;
+    --hl-number: #0550ae;
+    --hl-comment: #59636e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --ink: #e6edf3;
+      --muted: #9198a1;
+      --line: #3d444d;
+      --soft: #151b23;
+      --link: #4493f8;
+      --hl-keyword: #ff7b72;
+      --hl-string: #a5d6ff;
+      --hl-number: #79c0ff;
+      --hl-comment: #9198a1;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 2em; line-height: 1.25; margin: 0 0 16px; }
+  h2 { font-size: 1.5em; margin: 40px 0 16px; padding-bottom: .3em; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.25em; margin: 32px 0 12px; }
+  p, ul, table, pre, details { margin: 0 0 16px; }
+  a { color: var(--link); }
+  code { font: .9em Consolas, "Cascadia Mono", monospace; background: var(--soft);
+    padding: .15em .35em; border-radius: 6px; }
+  pre { background: var(--soft); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.45; }
+  pre code { background: none; padding: 0; font-size: .875em; }
+  table { border-collapse: collapse; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: 6px 12px; text-align: left; }
+  th { background: var(--soft); }
+  details { border: 1px solid var(--line); border-radius: 8px; padding: 0 16px; }
+  details[open] { padding-bottom: 4px; }
+  summary { cursor: pointer; color: var(--link); padding: 10px 0; }
+  .highlighter-rouge { position: relative; }
+  .copy { position: absolute; top: 8px; right: 8px; font: inherit; font-size: 13px; line-height: 1;
+    padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--muted); cursor: pointer; }
+  .copy:hover { color: var(--ink); }
+  .highlight .k, .highlight .kd, .highlight .kt, .highlight .ow { color: var(--hl-keyword); }
+  .highlight .s, .highlight .s1, .highlight .s2 { color: var(--hl-string); }
+  .highlight .mi, .highlight .mf, .highlight .m { color: var(--hl-number); }
+  .highlight .c, .highlight .c1, .highlight .cm { color: var(--hl-comment); font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+{{ content }}
+</main>
+<script>
+  document.querySelectorAll(".copyable div.highlighter-rouge").forEach(block => {
+    const code = block.querySelector("pre");
+    const button = document.createElement("button");
+    button.className = "copy";
+    button.textContent = "Копировать";
+    button.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(code.innerText.trimEnd());
+      button.textContent = "Скопировано";
+      setTimeout(() => { button.textContent = "Копировать"; }, 1500);
+    });
+    block.appendChild(button);
+  });
+</script>
+</body>
+</html>

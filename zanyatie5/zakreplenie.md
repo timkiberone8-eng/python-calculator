@@ -162,7 +162,7 @@ CREATE TABLE games (
 ```
 
 ```sql
-INSERT INTO games VALUES
+INSERT INTO games (title, genre, year, rating, is_free) VALUES
   ('Minecraft',        'sandbox',    2011, 9.0, false),
   ('Roblox',           'sandbox',    2006, 7.5, true),
   ('Terraria',         'sandbox',    2011, 9.0, false),

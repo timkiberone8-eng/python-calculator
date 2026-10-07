@@ -1,11 +1,11 @@
 # Урок 4, шаг 1. Чтение текстового файла.
 #
 # Запускать ИЗ ПАПКИ urok4:
-#     cd urok4
+#     cd session3/urok4
 #     python read_example.py
 #
 # ЛОВУШКА, проверена запуском. Если запустить из корня проекта командой
-# "python urok4/read_example.py", программа упадёт:
+# "python session3/urok4/read_example.py", программа упадёт:
 #     FileNotFoundError: [Errno 2] No such file or directory: 'example.txt'
 # Потому что open() ищет файл относительно ТЕКУЩЕЙ папки терминала,
 # а не относительно папки, где лежит скрипт. Это важное отличие от import:

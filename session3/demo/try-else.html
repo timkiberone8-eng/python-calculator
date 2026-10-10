@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>try/except/finally против try/except/else/finally</title>
+<style>
+  :root{
+    --bg:#eef1f5;
+    --card:#ffffff;
+    --ink:#11161f;
+    --ink-soft:#4a5468;
+    --line:#c7cfdb;
+    --accent:#1b5fd9;
+    --accent-soft:#e3ecff;
+    --good:#0a7a3d;
+    --good-soft:#dff5e7;
+    --bad:#b3241c;
+    --bad-soft:#fde4e2;
+    --warn:#8a5a00;
+    --warn-soft:#fdf0d2;
+    --code-bg:#161c27;
+    --code-ink:#e9eef7;
+    --mono:"Cascadia Mono","Consolas","DejaVu Sans Mono","Courier New",monospace;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Segoe UI",Tahoma,Verdana,sans-serif;
+    font-size:18px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1300px;margin:0 auto;padding:22px 20px 60px}
+
+  h1{font-size:30px;line-height:1.2;margin:0 0 8px}
+  h2{font-size:22px;margin:0}
+  p{margin:0 0 10px}
+
+  .lead{
+    background:var(--card);
+    border:2px solid var(--line);
+    border-left:10px solid var(--accent);
+    border-radius:10px;
+    padding:14px 18px;
+    margin-bottom:18px;
+  }
+  .lead .idea{font-size:19px;margin:0}
+  .lead .idea b{background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+
+  /* ---------- scenario switcher ---------- */
+  .scen-title{font-size:16px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:0 0 8px;font-weight:700}
+  .scenarios{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}
+  .scen{
+    text-align:left;
+    background:var(--card);
+    border:3px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    cursor:pointer;
+    font:inherit;
+    color:var(--ink);
+    transition:border-color .12s, background .12s;
+  }
+  .scen:hover{border-color:#8fa6c9}
+  .scen .num{
+    display:inline-block;min-width:28px;height:28px;line-height:28px;text-align:center;
+    background:var(--line);color:#222c3b;border-radius:6px;font-weight:700;margin-right:8px;
+  }
+  .scen .nm{font-weight:700;font-size:17px}
+  .scen .sub{display:block;margin-top:6px;font-size:15px;color:var(--ink-soft)}
+  .scen[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+  .scen[aria-pressed="true"] .num{background:var(--accent);color:#fff}
+  .scen.peak[aria-pressed="true"]{border-color:var(--bad);background:var(--bad-soft)}
+  .scen.peak[aria-pressed="true"] .num{background:var(--bad)}
+
+  .scen-note{
+    background:var(--card);border:2px solid var(--line);border-radius:10px;
+    padding:10px 16px;margin:10px 0 18px;font-size:17px;color:var(--ink-soft);
+  }
+  .scen-note b{color:var(--ink)}
+
+  /* ---------- global controls ---------- */
+  .both{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .both .lbl{font-weight:700;font-size:16px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em}
+
+  button.btn{
+    font:inherit;font-weight:700;font-size:17px;
+    padding:9px 18px;border-radius:8px;cursor:pointer;
+    border:2px solid var(--accent);background:var(--accent);color:#fff;
+  }
+  button.btn:hover{background:#1750b8;border-color:#1750b8}
+  button.btn.ghost{background:var(--card);color:var(--accent)}
+  button.btn.ghost:hover{background:var(--accent-soft)}
+  button.btn[disabled]{opacity:.42;cursor:default}
+  button.btn[disabled]:hover{background:var(--accent);border-color:var(--accent)}
+  button.btn.ghost[disabled]:hover{background:var(--card)}
+
+  /* ---------- cards ---------- */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .card{
+    background:var(--card);
+    border:3px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .card.a{border-color:#d9a24a}
+  .card.b{border-color:#3f8f63}
+  .card > header{padding:12px 16px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .card.a > header{background:#fbf0dc}
+  .card.b > header{background:#dff2e6}
+  .card > header .tag{
+    font-weight:800;font-size:18px;padding:2px 10px;border-radius:6px;color:#fff;
+  }
+  .card.a > header .tag{background:#a9701c}
+  .card.b > header .tag{background:#25714a}
+  .card > header .hint{font-size:16px;color:var(--ink-soft)}
+
+  /* ---------- code ---------- */
+  .code{
+    background:var(--code-bg);
+    color:var(--code-ink);
+    font-family:var(--mono);
+    font-size:17px;
+    line-height:1.72;
+    padding:12px 0;
+    overflow-x:auto;
+  }
+  .ln{
+    display:flex;
+    white-space:pre;
+    border-left:6px solid transparent;
+    padding:0 10px 0 4px;
+  }
+  .ln .g{
+    flex:0 0 auto;width:30px;text-align:right;margin-right:14px;
+    color:#7d8ba3;user-select:none;
+  }
+  .ln .t{flex:0 1 auto}
+  .ln.done .g{color:#8fb4ff}
+  .ln.cur{background:#2b3a57;border-left-color:#63a0ff}
+  .ln.cur .g{color:#bcd6ff}
+  .ln.err{background:#5a1d1a;border-left-color:#ff7a6e}
+  .ln.err .g{color:#ffb8b0}
+  .ln.skip{background:#26303f;border-left-color:#7c8aa3}
+  .ln.skip .t{opacity:.5}
+  .ln .mark{color:#ffd489;font-style:italic;padding-left:10px}
+
+  .k{color:#ff9ad1;font-weight:700}   /* keywords */
+  .f{color:#7fd3ff}                   /* builtins */
+  .s{color:#a9e88c}                   /* strings */
+  .e{color:#ffc46b;font-weight:700}   /* exception class */
+  .n{color:#d7b7ff}                   /* numbers */
+
+  /* ---------- panels ---------- */
+  .panels{padding:14px 16px 16px;display:grid;gap:12px}
+  .panel{border:2px solid var(--line);border-radius:9px;overflow:hidden}
+  .panel .ph{
+    background:#f1f4f8;border-bottom:2px solid var(--line);
+    padding:6px 12px;font-size:15px;font-weight:700;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:.05em;
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+  }
+  .panel .ph .cnt{text-transform:none;letter-spacing:0;font-weight:600;color:var(--ink-soft)}
+
+  .term{
+    background:#0f141d;color:#e7edf7;
+    font-family:var(--mono);font-size:16px;line-height:1.5;
+    padding:10px 12px;min-height:118px;
+    white-space:pre-wrap;word-break:break-word;
+  }
+  .term .o{display:block}
+  .term .er{display:block;color:#ff8e82}
+  .term .u{color:#ffd45e;font-weight:700}
+  .term .ph0{color:#7e8ba1;font-style:italic;font-family:"Segoe UI",sans-serif}
+
+  .say{padding:10px 12px;min-height:74px;font-size:17px;background:#fff}
+  .say .cue{
+    display:inline-block;font-size:14px;font-weight:700;letter-spacing:.05em;
+    padding:1px 8px;border-radius:5px;margin-right:8px;vertical-align:1px;
+    background:var(--line);color:#222c3b;text-transform:uppercase;
+  }
+  .say.run .cue{background:var(--accent-soft);color:#12408f}
+  .say.err .cue{background:var(--bad-soft);color:var(--bad)}
+  .say.skip .cue{background:#e7eaf0;color:#4a5468}
+  .say.fin .cue{background:var(--warn-soft);color:var(--warn)}
+  .say.ok .cue{background:var(--good-soft);color:var(--good)}
+  .say .txt{color:var(--ink)}
+  .say .idle{color:var(--ink-soft);font-style:italic}
+
+  .verdict{border-radius:9px;border:3px solid var(--line);padding:10px 14px;font-size:17px;display:none}
+  .verdict.show{display:block}
+  .verdict .code0,.verdict .code1{
+    font-family:var(--mono);font-size:16px;font-weight:700;
+    padding:1px 8px;border-radius:5px;margin-right:8px;white-space:nowrap;
+  }
+  .verdict .code0{background:var(--good-soft);color:var(--good)}
+  .verdict .code1{background:var(--bad-soft);color:var(--bad)}
+  .verdict.good{border-color:var(--good);background:#f2fbf5}
+  .verdict.bad{border-color:var(--bad);background:#fff5f4}
+  .verdict.plain{border-color:var(--line);background:#f7f9fc}
+  .verdict b{display:block;margin-top:2px}
+
+  .ctrls{display:flex;gap:10px;flex-wrap:wrap;padding:0 16px 16px}
+
+  /* ---------- общая функция (сценарий 3) ---------- */
+  .fnbox{
+    display:none;
+    background:var(--card);border:3px solid #9b6bbf;border-radius:12px;
+    overflow:hidden;margin-bottom:16px;
+  }
+  .fnbox.show{display:block}
+  .fnbox .fh{
+    background:#f0e6f8;padding:8px 16px;font-size:16px;color:#4a3a5c;
+    border-bottom:2px solid #d9c6e8;
+  }
+  .fnbox .fh b{color:#2d1f3d}
+  .fnbox .code{font-size:16px;padding:10px 0}
+  .fnbox .fn{
+    padding:9px 16px;font-size:16px;color:var(--ink-soft);
+    background:#faf7fd;border-top:2px solid #e4d8ef;
+  }
+  .fnbox .fn b{color:var(--ink)}
+
+  /* ---------- cheatsheet ---------- */
+  .sheet{
+    margin-top:26px;background:var(--card);border:3px solid var(--line);
+    border-radius:12px;padding:16px 20px;
+  }
+  .sheet h2{margin-bottom:12px}
+  .sheet .grid{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start}
+  .order{
+    background:var(--code-bg);color:var(--code-ink);
+    font-family:var(--mono);font-size:17px;line-height:1.9;
+    padding:12px 16px;border-radius:9px;white-space:pre;overflow-x:auto;
+  }
+  .order .w{color:#a9e88c}
+  .order .r{color:#ff9ad1}
+  .order .y{color:#ffc46b}
+  .rule{font-size:19px;background:var(--accent-soft);border-left:10px solid var(--accent);border-radius:8px;padding:12px 16px}
+  .rule .q{font-weight:700}
+  .rule .ans{display:block;margin-top:8px;font-size:17px}
+  .rule .ans span{font-family:var(--mono);background:#fff;border:1px solid var(--line);border-radius:4px;padding:0 6px}
+
+  footer.foot{margin-top:18px;font-size:15px;color:var(--ink-soft);text-align:center}
+
+  @media (max-width:1060px){
+    .cards{grid-template-columns:1fr}
+    .scenarios{grid-template-columns:1fr}
+    .sheet .grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Где ставить рабочий код: внутри <code>try</code> или в <code>else</code>?</h1>
+
+  <div class="lead">
+    <p class="idea"><b>try</b> это не "блок с основной работой", а зона, накрытая ловушкой. Всё, что попало в эту зону, поймают твои же <code>except</code>, включая то, что ты ловить не собирался, и даже то, что сломалось глубоко внутри вызванной оттуда функции.</p>
+    <p class="idea" style="margin-top:8px"><b>else</b> нужен, чтобы вынести продолжение работы из-под ловушки.</p>
+  </div>
+
+  <p class="scen-title">Сценарий (общий для обоих вариантов)</p>
+  <div class="scenarios" id="scenarios"></div>
+  <div class="scen-note" id="scenNote"></div>
+
+  <div class="fnbox" id="fnbox">
+    <div class="fh">Обе программы вызывают одну и ту же функцию. Она объявлена выше в том же файле <b>main.py</b>, строки 1-4.</div>
+    <div class="code" id="fncode"></div>
+    <div class="fn">Последняя строка случайно оказалась <b>вне блока with</b>, а там файл уже закрыт. Запись в закрытый файл это настоящий <b>ValueError</b>. Глядя на вызов <b>save_to_file(result)</b>, этого не видно.</div>
+  </div>
+
+  <div class="both">
+    <span class="lbl">Оба сразу:</span>
+    <button class="btn" id="bothStep">Шаг в обоих</button>
+    <button class="btn" id="bothPlay">Играть оба</button>
+    <button class="btn ghost" id="bothReset">Сначала</button>
+  </div>
+
+  <div class="cards">
+    <section class="card a" id="cardA"></section>
+    <section class="card b" id="cardB"></section>
+  </div>
+
+  <section class="sheet">
+    <h2>Шпаргалка: порядок выполнения</h2>
+    <div class="grid">
+      <div class="order"><span class="w">всё прошло:</span>   try -> <span class="y">else</span> -> <span class="y">finally</span>
+<span class="r">сломалось:</span>    try -> <span class="r">except</span> -> <span class="y">finally</span></div>
+      <div class="rule">
+        <span class="q">Правило выбора: "если эта строка сломается, я хочу, чтобы сработал мой except?"</span>
+        <span class="ans">Да, хочу поймать эту ошибку, значит строка идёт в <span>try</span>.</span>
+        <span class="ans">Нет, это уже продолжение работы, значит строка идёт в <span>else</span>.</span>
+        <span class="ans"><span>finally</span> выполняется всегда: и после else, и после except, и даже когда программа падает.</span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">KIBERone, курс Python. Вывод на странице совпадает с реальным прогоном на Python 3.13.</footer>
+</div>
+
+<script>
+"use strict";
+
+/* ================= данные ================= */
+/* kind: run | err | skip | fin | ok | crash
+   out:  строки в stdout,  err: строки в stderr */
+
+var CRASH = [
+  "Traceback (most recent call last):",
+  '  File "main.py", line 14, in <module>',
+  "    save_to_file(result)",
+  "    ~~~~~~~~~~~~^^^^^^^^",
+  '  File "main.py", line 4, in save_to_file',
+  '    f.write(str(value) + "\\n")',
+  "    ~~~~~~~^^^^^^^^^^^^^^^^^^^",
+  "ValueError: I/O operation on closed file."
+];
+
+/* функция, общая для обоих вариантов сценария 3 */
+var FN_CODE = [
+  "def save_to_file(value):",
+  '    with open("results.txt", "a", encoding="utf-8") as f:',
+  '        f.write("Результат: ")',
+  '    f.write(str(value) + "\\n")'
+];
+
+var SCEN = [
+  {
+    id: "s1",
+    name: "Пользователь ввёл букву вместо числа",
+    sub: "Ошибка возникает в самом try. Оба варианта ведут себя одинаково.",
+    note: "Пользователь набрал <b>пять</b> вместо <b>5</b>. Ошибка происходит прямо в первой строке try. Посмотри: разницы между вариантами нет вообще. <b>else нужен не для этого.</b>",
+    peak: false,
+    A: {
+      code: [
+        "try:",
+        '    result = int("пять")',
+        '    print("Результат: " + str(result))',
+        "except ValueError:",
+        '    print("Ошибка: введено не число!")',
+        "finally:",
+        '    print("Операция завершена.")'
+      ],
+      steps: [
+        {l:0, kind:"run", say:"Входим в try. Всё, что внутри, накрыто ловушкой."},
+        {l:1, kind:"err", say:'int("пять") не смог сделать из текста число, возник ValueError.'},
+        {l:3, kind:"err", say:"Python ищет подходящий except. ValueError подошёл, ловушка сработала."},
+        {l:4, kind:"run", say:"Печатаем сообщение об ошибке.", out:["Ошибка: введено не число!"]},
+        {l:5, kind:"fin", say:"finally выполняется всегда, была ошибка или нет."},
+        {l:6, kind:"fin", say:"Печатаем завершение.", out:["Операция завершена."]}
+      ],
+      exit: 0, tone: "good",
+      verdict: "Ошибка поймана там, где она возникла. Сообщение говорит правду."
+    },
+    B: {
+      code: [
+        "try:",
+        '    result = int("пять")',
+        "except ValueError:",
+        '    print("Ошибка: введено не число!")',
+        "else:",
+        '    print("Результат: " + str(result))',
+        "finally:",
+        '    print("Операция завершена.")'
+      ],
+      steps: [
+        {l:0, kind:"run", say:"Входим в try."},
+        {l:1, kind:"err", say:'int("пять") не смог сделать из текста число, возник ValueError.'},
+        {l:2, kind:"err", say:"except ValueError подошёл, ловушка сработала."},
+        {l:3, kind:"run", say:"Печатаем сообщение об ошибке.", out:["Ошибка: введено не число!"]},
+        {l:4, kind:"skip", say:"else пропускается: он работает только когда ошибки не было.", mark:"пропущено"},
+        {l:6, kind:"fin", say:"finally выполняется всегда."},
+        {l:7, kind:"fin", say:"Печатаем завершение.", out:["Операция завершена."]}
+      ],
+      exit: 0, tone: "good",
+      verdict: "То же самое, что и слева. На ошибке ввода else ничего не меняет."
+    }
+  },
+
+  {
+    id: "s2",
+    name: "Всё прошло хорошо",
+    sub: "Ошибки нет вообще. Оба варианта печатают результат.",
+    note: "Пользователь ввёл <b>42</b>, всё посчиталось. Разница между вариантами: слева строка вывода выполняется внутри try, справа в else. Видно только по подсветке, вывод одинаковый.",
+    peak: false,
+    A: {
+      code: [
+        "try:",
+        '    result = int("42")',
+        '    print("Результат: " + str(result))',
+        "except ValueError:",
+        '    print("Ошибка: введено не число!")',
+        "finally:",
+        '    print("Операция завершена.")'
+      ],
+      steps: [
+        {l:0, kind:"run", say:"Входим в try."},
+        {l:1, kind:"run", say:'int("42") сработал, в result лежит число 42.'},
+        {l:2, kind:"run", say:"Печатаем результат. Эта строка всё ещё внутри ловушки.", out:["Результат: 42"]},
+        {l:3, kind:"skip", say:"Ошибки не было, except не нужен и пропускается.", mark:"пропущено"},
+        {l:5, kind:"fin", say:"finally выполняется всегда."},
+        {l:6, kind:"fin", say:"Печатаем завершение.", out:["Операция завершена."]}
+      ],
+      exit: 0, tone: "good",
+      verdict: "Всё хорошо. Но строка вывода лежит под ловушкой, это пригодится в сценарии 3."
+    },
+    B: {
+      code: [
+        "try:",
+        '    result = int("42")',
+        "except ValueError:",
+        '    print("Ошибка: введено не число!")',
+        "else:",
+        '    print("Результат: " + str(result))',
+        "finally:",
+        '    print("Операция завершена.")'
+      ],
+      steps: [
+        {l:0, kind:"run", say:"Входим в try."},
+        {l:1, kind:"run", say:'int("42") сработал, в result лежит число 42. try закончился без ошибок.'},
+        {l:2, kind:"skip", say:"Ошибки не было, except пропускается.", mark:"пропущено"},
+        {l:4, kind:"run", say:"Ошибки не было, значит выполняем else."},
+        {l:5, kind:"run", say:"Печатаем результат. Эта строка уже вне ловушки.", out:["Результат: 42"]},
+        {l:6, kind:"fin", say:"finally выполняется всегда."},
+        {l:7, kind:"fin", say:"Печатаем завершение.", out:["Операция завершена."]}
+      ],
+      exit: 0, tone: "good",
+      verdict: "Вывод такой же. Разницы для пользователя нет."
+    }
+  },
+
+  {
+    id: "s3",
+    name: "Ошибка спряталась внутри функции",
+    sub: "Кульминация: слева программа врёт про причину, справа говорит правду.",
+    note: "Пользователь вводит <b>10</b> и <b>2</b>, то есть всё правильно (жёлтым показано то, что он набрал). Деление проходит, result посчитан, и только потом ломается сохранение. <b>Ошибка спряталась внутри функции save_to_file. Глядя на try, её не видно, и именно поэтому опасно держать в try то, что уже не про ввод пользователя.</b>",
+    peak: true,
+    fn: true,
+    A: {
+      from: 7,
+      code: [
+        "try:",
+        '    a = int(input("Введите первое число: "))',
+        '    b = int(input("Введите второе число: "))',
+        "    result = a / b",
+        "",
+        "    save_to_file(result)",
+        "except ValueError:",
+        '    print("Ошибка: введено не число!")',
+        "finally:",
+        '    print("Операция завершена.")'
+      ],
+      steps: [
+        {l:0, kind:"run", say:"Входим в try. Всё, что внутри, накрыто ловушкой."},
+        {l:1, kind:"run", say:"Пользователь набрал 10, int() принял число.", out:[{p:"Введите первое число: ", u:"10"}]},
+        {l:2, kind:"run", say:"Пользователь набрал 2. Ввод полностью корректный.", out:[{p:"Введите второе число: ", u:"2"}]},
+        {l:3, kind:"run", say:"10 / 2 = 5.0. Деление прошло, result посчитан."},
+        {l:5, kind:"run", say:"Вызываем save_to_file. Снаружи эта строка выглядит безопасной."},
+        {l:5, kind:"err", fl:3, say:"Внутри функции, на строке 4, возник ValueError: запись в закрытый файл."},
+        {l:6, kind:"err", say:"Вызов был внутри try, значит ловушка накрыла и всё, что случилось внутри функции."},
+        {l:7, kind:"err", say:"Печатаем заготовленное сообщение. Ввод был правильный, это неправда.", out:["Ошибка: введено не число!"]},
+        {l:8, kind:"fin", say:"finally выполняется всегда."},
+        {l:9, kind:"fin", say:"Печатаем завершение.", out:["Операция завершена."]}
+      ],
+      exit: 0, tone: "bad",
+      verdict: "Пользователь ввёл всё правильно, а увидел \"Ошибка: введено не число!\". Настоящая поломка была в записи файла, и о ней никто не узнал. Код возврата 0, снаружи всё выглядит нормально."
+    },
+    B: {
+      from: 7,
+      code: [
+        "try:",
+        '    a = int(input("Введите первое число: "))',
+        '    b = int(input("Введите второе число: "))',
+        "    result = a / b",
+        "except ValueError:",
+        '    print("Ошибка: введено не число!")',
+        "else:",
+        "    save_to_file(result)",
+        "finally:",
+        '    print("Операция завершена.")'
+      ],
+      steps: [
+        {l:0, kind:"run", say:"Входим в try. Здесь только то, что касается ввода пользователя."},
+        {l:1, kind:"run", say:"Пользователь набрал 10, int() принял число.", out:[{p:"Введите первое число: ", u:"10"}]},
+        {l:2, kind:"run", say:"Пользователь набрал 2. Ввод полностью корректный.", out:[{p:"Введите второе число: ", u:"2"}]},
+        {l:3, kind:"run", say:"10 / 2 = 5.0. try закончился без единой ошибки."},
+        {l:4, kind:"skip", say:"Ошибки не было, except пропускается.", mark:"пропущено"},
+        {l:6, kind:"run", say:"Ошибки не было, выполняем else. Ловушка сюда уже не дотягивается."},
+        {l:7, kind:"err", fl:3, say:"save_to_file падает с ValueError внутри, на строке 4. Ловить его здесь некому."},
+        {l:8, kind:"fin", say:"finally всё равно выполняется, перед тем как программа упадёт."},
+        {l:9, kind:"fin", say:"Печатаем завершение.", out:["Операция завершена."]},
+        {l:null, kind:"crash", say:"Traceback показывает оба места: строку 14, где вызвали, и строку 4 внутри save_to_file, где сломалось.", err:CRASH}
+      ],
+      exit: 1, tone: "good",
+      verdict: "Пользователь видит настоящую ошибку с указанием на save_to_file, и сразу понятно, где чинить. Код возврата 1, поломку невозможно не заметить."
+    }
+  }
+];
+
+/* ================= подсветка кода ================= */
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+var TOK = /("(?:[^"\\]|\\.)*")|\b(try|except|else|finally|def|with|as|raise|return|if|not|in|and|or)\b|\b(ValueError|TypeError|ZeroDivisionError)\b|\b(print|int|str|float|input|open|write)\b|\b(\d+)\b/g;
+
+function hl(line){
+  return esc(line).replace(TOK, function(m, str, kw, exc, fn, num){
+    if(str !== undefined) return '<span class="s">' + str + '</span>';
+    if(kw  !== undefined) return '<span class="k">' + kw  + '</span>';
+    if(exc !== undefined) return '<span class="e">' + exc + '</span>';
+    if(fn  !== undefined) return '<span class="f">' + fn  + '</span>';
+    if(num !== undefined) return '<span class="n">' + num + '</span>';
+    return m;
+  });
+}
+
+/* ================= карточка ================= */
+function Card(rootId, letter, title, hint){
+  this.root = document.getElementById(rootId);
+  this.letter = letter;
+  this.title = title;
+  this.hint = hint;
+  this.timer = null;
+  this.build();
+}
+
+Card.prototype.build = function(){
+  this.root.innerHTML =
+    '<header><span class="tag">Вариант ' + this.letter + '</span>' +
+      '<h2>' + this.title + '</h2>' +
+      '<span class="hint">' + this.hint + '</span></header>' +
+    '<div class="code"></div>' +
+    '<div class="panels">' +
+      '<div class="panel"><div class="ph"><span>Что напечатала программа</span><span class="cnt"></span></div>' +
+        '<div class="term"></div></div>' +
+      '<div class="panel"><div class="ph"><span>Что происходит</span></div>' +
+        '<div class="say"><span class="idle">Нажми "Шаг" или "Играть".</span></div></div>' +
+      '<div class="verdict"></div>' +
+    '</div>' +
+    '<div class="ctrls">' +
+      '<button class="btn bStep">Шаг</button>' +
+      '<button class="btn bPlay">Играть</button>' +
+      '<button class="btn ghost bReset">Сначала</button>' +
+    '</div>';
+
+  this.elCode = this.root.querySelector(".code");
+  this.elTerm = this.root.querySelector(".term");
+  this.elCnt  = this.root.querySelector(".cnt");
+  this.elSay  = this.root.querySelector(".say");
+  this.elVerd = this.root.querySelector(".verdict");
+  this.bStep  = this.root.querySelector(".bStep");
+  this.bPlay  = this.root.querySelector(".bPlay");
+  this.bReset = this.root.querySelector(".bReset");
+
+  var self = this;
+  this.bStep.addEventListener("click", function(){ self.pause(); self.step(); });
+  this.bPlay.addEventListener("click", function(){ self.toggle(); });
+  this.bReset.addEventListener("click", function(){ self.pause(); fnHi(null); self.reset(); });
+};
+
+Card.prototype.load = function(data){
+  this.data = data;
+  var from = data.from || 1;
+  var html = "";
+  for(var i = 0; i < data.code.length; i++){
+    html += '<div class="ln" data-l="' + i + '"><span class="g">' + (i + from) +
+            '</span><span class="t">' + hl(data.code[i]) + '</span></div>';
+  }
+  this.elCode.innerHTML = html;
+  this.lines = this.elCode.querySelectorAll(".ln");
+  this.reset();
+};
+
+Card.prototype.reset = function(){
+  this.i = 0;
+  for(var j = 0; j < this.lines.length; j++){
+    this.lines[j].className = "ln";
+    var mk = this.lines[j].querySelector(".mark");
+    if(mk) mk.parentNode.removeChild(mk);
+  }
+  this.elTerm.innerHTML = '<span class="ph0">(пока пусто)</span>';
+  this.elCnt.textContent = "";
+  this.elSay.className = "say";
+  this.elSay.innerHTML = '<span class="idle">Нажми "Шаг" или "Играть".</span>';
+  this.elVerd.className = "verdict";
+  this.elVerd.innerHTML = "";
+  this.bStep.disabled = false;
+  this.bPlay.disabled = false;
+  this.bPlay.textContent = "Играть";
+};
+
+Card.prototype.done = function(){ return this.i >= this.data.steps.length; };
+
+var CUE = { run:"выполняется", err:"ошибка", skip:"пропуск", fin:"finally", crash:"падение" };
+
+Card.prototype.step = function(){
+  if(this.done()) return false;
+  var s = this.data.steps[this.i];
+  var k;
+
+  for(k = 0; k < this.lines.length; k++){
+    var el = this.lines[k];
+    if(el.classList.contains("cur") || el.classList.contains("err")){
+      el.className = "ln done";
+    }
+  }
+
+  if(s.l !== null && s.l !== undefined){
+    var ln = this.lines[s.l];
+    if(s.kind === "err")      ln.className = "ln err";
+    else if(s.kind === "skip") ln.className = "ln skip";
+    else                       ln.className = "ln cur";
+
+    if(s.mark && !ln.querySelector(".mark")){
+      var m = document.createElement("span");
+      m.className = "mark";
+      m.textContent = "  # " + s.mark;
+      ln.appendChild(m);
+    }
+  }
+
+  if(s.fl !== undefined && s.fl !== null) fnHi(s.fl);
+
+  if(this.elTerm.querySelector(".ph0") && (s.out || s.err)) this.elTerm.innerHTML = "";
+  if(s.out) for(k = 0; k < s.out.length; k++) this.addOut(s.out[k], "o");
+  if(s.err) for(k = 0; k < s.err.length; k++) this.addOut(s.err[k], "er");
+
+  var cue = CUE[s.kind] || "шаг";
+  this.elSay.className = "say " + (s.kind === "crash" ? "err" : s.kind);
+  this.elSay.innerHTML = '<span class="cue">' + cue + '</span><span class="txt">' + s.say + "</span>";
+
+  this.i++;
+  this.elCnt.textContent = "шаг " + this.i + " из " + this.data.steps.length;
+
+  if(this.done()) this.finish();
+  return true;
+};
+
+Card.prototype.addOut = function(text, cls){
+  var d = document.createElement("span");
+  d.className = cls;
+  if(text && typeof text === "object"){
+    /* строка приглашения ввода плюс то, что набрал пользователь */
+    d.appendChild(document.createTextNode(text.p));
+    var u = document.createElement("span");
+    u.className = "u";
+    u.textContent = text.u;
+    d.appendChild(u);
+  } else {
+    d.textContent = text;
+  }
+  this.elTerm.appendChild(d);
+};
+
+Card.prototype.finish = function(){
+  var d = this.data;
+  var badge = d.exit === 0
+    ? '<span class="code0">код возврата 0</span>'
+    : '<span class="code1">код возврата 1</span>';
+  this.elVerd.className = "verdict show " + (d.tone === "bad" ? "bad" : d.tone === "good" ? "good" : "plain");
+  this.elVerd.innerHTML = badge + "<b>" + d.verdict + "</b>";
+  this.bStep.disabled = true;
+  this.bPlay.disabled = true;
+  this.pause();
+};
+
+Card.prototype.play = function(){
+  if(this.done()) return;
+  var self = this;
+  this.bPlay.textContent = "Пауза";
+  this.timer = setInterval(function(){
+    if(!self.step()){ self.pause(); }
+  }, 1200);
+};
+
+Card.prototype.pause = function(){
+  if(this.timer){ clearInterval(this.timer); this.timer = null; }
+  this.bPlay.textContent = "Играть";
+};
+
+Card.prototype.toggle = function(){
+  if(this.timer) this.pause(); else this.play();
+};
+
+/* ============ блок с общей функцией ============ */
+var fnBox  = document.getElementById("fnbox");
+var fnCode = document.getElementById("fncode");
+var fnLines = null;
+
+(function buildFn(){
+  var html = "";
+  for(var i = 0; i < FN_CODE.length; i++){
+    html += '<div class="ln"><span class="g">' + (i+1) +
+            '</span><span class="t">' + hl(FN_CODE[i]) + '</span></div>';
+  }
+  fnCode.innerHTML = html;
+  fnLines = fnCode.querySelectorAll(".ln");
+})();
+
+function fnHi(idx){
+  for(var i = 0; i < fnLines.length; i++) fnLines[i].className = "ln";
+  if(idx !== null && idx !== undefined && fnLines[idx]) fnLines[idx].className = "ln err";
+}
+
+/* ================= сборка страницы ================= */
+var cardA = new Card("cardA", "А", "Работа внутри try", "try / except / finally");
+var cardB = new Card("cardB", "Б", "Работа в else", "try / except / else / finally");
+
+var scenBox  = document.getElementById("scenarios");
+var scenNote = document.getElementById("scenNote");
+var current  = 0;
+
+for(var i = 0; i < SCEN.length; i++){
+  (function(idx){
+    var s = SCEN[idx];
+    var b = document.createElement("button");
+    b.className = "scen" + (s.peak ? " peak" : "");
+    b.type = "button";
+    b.setAttribute("aria-pressed", "false");
+    b.innerHTML = '<span class="num">' + (idx+1) + '</span><span class="nm">' + s.name + "</span>" +
+                  '<span class="sub">' + s.sub + "</span>";
+    b.addEventListener("click", function(){ pick(idx); });
+    scenBox.appendChild(b);
+  })(i);
+}
+
+function pick(idx){
+  current = idx;
+  var btns = scenBox.querySelectorAll(".scen");
+  for(var j = 0; j < btns.length; j++){
+    btns[j].setAttribute("aria-pressed", j === idx ? "true" : "false");
+  }
+  var s = SCEN[idx];
+  scenNote.innerHTML = s.note;
+  fnBox.className = s.fn ? "fnbox show" : "fnbox";
+  fnHi(null);
+  cardA.pause(); cardB.pause();
+  cardA.load(s.A);
+  cardB.load(s.B);
+  syncBoth();
+}
+
+/* общие кнопки */
+var bothStep  = document.getElementById("bothStep");
+var bothPlay  = document.getElementById("bothPlay");
+var bothReset = document.getElementById("bothReset");
+var bothTimer = null;
+
+function bothPause(){
+  if(bothTimer){ clearInterval(bothTimer); bothTimer = null; }
+  bothPlay.textContent = "Играть оба";
+}
+
+function bothTick(){
+  var moved = false;
+  if(cardA.step()) moved = true;
+  if(cardB.step()) moved = true;
+  syncBoth();
+  return moved;
+}
+
+function syncBoth(){
+  var fin = cardA.done() && cardB.done();
+  bothStep.disabled = fin;
+  bothPlay.disabled = fin;
+  if(fin) bothPause();
+}
+
+bothStep.addEventListener("click", function(){
+  bothPause(); cardA.pause(); cardB.pause();
+  bothTick();
+});
+
+bothPlay.addEventListener("click", function(){
+  if(bothTimer){ bothPause(); return; }
+  cardA.pause(); cardB.pause();
+  bothPlay.textContent = "Пауза";
+  bothTimer = setInterval(function(){
+    if(!bothTick()) bothPause();
+  }, 1200);
+});
+
+bothReset.addEventListener("click", function(){
+  bothPause(); cardA.pause(); cardB.pause();
+  fnHi(null);
+  cardA.reset(); cardB.reset();
+  syncBoth();
+});
+
+pick(0);
+</script>
+</body>
+</html>
